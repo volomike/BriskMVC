@@ -26,5 +26,5 @@ export default async function ({ w, VIEW }) {
 	VIEW.FULLNAME = fullname;
 	VIEW.USER_ID = userId;
 
-	return w.renderView();
+	return await w.renderView();
 }

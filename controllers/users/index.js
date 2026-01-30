@@ -5,7 +5,7 @@ export default async function ({ w, VIEW }) {
 	VIEW.USERS = rows.map(r => ({ id: r.id, name: r.name }));
 	//die(JSON.stringify(VIEW,' ',2));
 
-	return w.renderView();
+	return await w.renderView();
 	
 	
 }
