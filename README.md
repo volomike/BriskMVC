@@ -3,7 +3,7 @@
 1. Load the BriskMVC system with:
 
 ```
-bun --hot server.js
+bun --hot server.js --watch controllers
 ```
 
 2. Connection comes into your server.js and gets routed to the controllers based on your URL. So...
@@ -67,5 +67,40 @@ something you'll likely leave on all the time except in cases where you have ext
 8. If you have multiple projects that all share this same framework, then you may want to put the briskmvc folder in a central
 location, and then use the "ln -s" command to make a Linux alias to it so that all the projects share the same framework and
 framework improvements.
+
+9. I have created some useful Bash script to help you with this project:
+
+```
+./start     <-- manual start at command line
+./restart   <-- MUST EDIT! Where you see the XXXXXX, you need to replace with a systemd service. If you don't know how to use
+				the systemd service system on Linux, then ask AI for assistance. I use systemd for all my Bun websites on the
+				server and then I map them through NGINX as well. Anyway, what this restart command does is restart this BunJS
+				service.
+./resetlogs <-- We often use the journalctl command, either as journalctl (without parameters), or as something like:
+				journalctl -u XXXXXX.service  # and may also add the -f switch too
+				in order to see the console output from the server.js. Well, sometimes it's easier if we clear all the logs
+				and start fresh. And that's what this command does.
+```
+
+So, you'll edit your config/config.js and change the port as you need for your systemd & NGINX arrangement, if you are using that
+in production. Then, you can use ./start for debugging in development, or ./restart to start the service as you normally would.
+
+10. I have used AI to provide an alternative briskmvc/router.js called briskmc/altrouter.js. You can switch your router to this by
+renaming router.js to router.js.ORIG and then altrouter.js to router.js. What this does is remove the standard Elysia router and
+utilize one that lets you dynamically add controllers as you desire in the controllers folder. Note, the ./start does the following
+command:
+
+bun --hot server.js --watch controllers
+
+That command USUALLY makes it so that this framework will see a new controller has been created and will automatically reload the
+server.js as necessary. But I say USUALLY. I have found some odd cases where it didn't work. Note that unlike the Express
+framework, Elysia loads all its controllers when it loads from the server.js (and components) so that it optimizes performance.
+But if you're in heavy development mode and really want to be able to add/remove/rename controllers frequently without reloading
+the server.js manually, then you may want to use this alternative router.js script, instead.
+
+For this alternative router, you may continue the discussion with GrokAI for improvement here:
+
+https://x.com/i/grok/share/284700cfeb4944b998344702526b5a81
+
 
 
