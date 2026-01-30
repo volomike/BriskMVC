@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title><%= VIEW.TITLE %></title>
+	<link rel="icon" href="/assets/favicon.ico">
+	<link rel="stylesheet" href="/assets/css/main.css?r=<%= VIEW.RANDOMID %>">
+</head>
+<body>
+	<h1><%= VIEW.TITLE %></h1>
+
+	<p>
+		<a href="<%= VIEW.BASEURL %>/users/form?add=yes">Add New User</a>
+	</p>
+
+	<ul>
+	<% (VIEW.USERS || []).forEach(u => { %>
+		<li>
+		<strong><%= u.name %></strong>
+		&nbsp;
+		<a href="<%= VIEW.BASEURL %>/users/form?edit=<%= u.id %>">
+			Edit
+		</a>
+		</li>
+	<% }) %>
+	</ul>
+</body>
+</html>

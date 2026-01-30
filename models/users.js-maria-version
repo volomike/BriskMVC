@@ -1,0 +1,49 @@
+export default {
+	async init() {
+		await w.m.maria.execSQL(
+			'sample',
+			`CREATE TABLE IF NOT EXISTS users (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			) ENGINE=InnoDB`,
+			[]
+		);
+	},
+
+	async list() {
+		await this.init();
+		return await w.m.maria.getRS(
+			'sample',
+			`SELECT id, name FROM users ORDER BY name ASC`,
+			[]
+		);
+	},
+
+	async findById(id) {
+		await this.init();
+		const rows = await w.m.maria.getRS(
+			'sample',
+			`SELECT id, name FROM users WHERE id = ?`,
+			[id]
+		);
+		return rows.length ? rows[0] : null;
+	},
+
+	async add(name) {
+		await this.init();
+		await w.m.maria.execSQL(
+			'sample',
+			`INSERT INTO users (name) VALUES (?)`,
+			[name]
+		);
+	},
+
+	async updateById(id, newName) {
+		await this.init();
+		await w.m.maria.execSQL(
+			'sample',
+			`UPDATE users SET name = ? WHERE id = ?`,
+			[newName, id]
+		);
+	}
+};

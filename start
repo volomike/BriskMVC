@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+
+bun --hot server.js --watch controllers
+
+
+

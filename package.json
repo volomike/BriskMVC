@@ -1,0 +1,23 @@
+{
+  "name": "framework",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@elysiajs/static": "^1.4.7",
+    "biome": "^0.3.3",
+    "ejs": "^4.0.1",
+    "elysia": "^1.4.22",
+    "fs": "^0.0.1-security",
+    "hjson": "^3.2.2",
+    "mysql2": "^3.16.1",
+    "path": "^0.12.7",
+    "pg": "^8.17.1"
+  }
+}
