@@ -80,6 +80,8 @@ framework improvements.
 				journalctl -u XXXXXX.service  # and may also add the -f switch too
 				in order to see the console output from the server.js. Well, sometimes it's easier if we clear all the logs
 				and start fresh. And that's what this command does.
+				WARNING -- please be aware that ./resetlogs will clear all your logs for journalctl. If that's not desirable,
+				then don't use it!
 ```
 
 So, you'll edit your config/config.js and change the port as you need for your systemd & NGINX arrangement, if you are using that
