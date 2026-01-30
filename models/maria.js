@@ -3,15 +3,23 @@ import mysql from 'mysql2/promise';
 const pools = {};
 
 async function ensureDatabaseExists(mariaConfig) {
-	const bootstrap = await mysql.createConnection({
-		host: mariaConfig.HOST,
-		port: mariaConfig.PORT,
-		user: mariaConfig.USER,
-		password: mariaConfig.PASS
-	});
+    const bootstrap = await mysql.createConnection({
+        host: mariaConfig.HOST,
+        port: mariaConfig.PORT,
+        user: mariaConfig.USER,
+        password: mariaConfig.PASS
+    });
 
-	await bootstrap.query(`CREATE DATABASE IF NOT EXISTS \`${mariaConfig.DB}\``);
-	await bootstrap.end();
+    try {
+        await bootstrap.query(`USE \`${mariaConfig.DB}\``);  // will throw if DB missing
+    } catch (err) {
+        if (err.code === 'ER_BAD_DB_ERROR') {
+            throw new Error(`Database '${mariaConfig.DB}' does not exist. Please create it manually.`);
+        }
+        throw err;
+    } finally {
+        await bootstrap.end();
+    }
 }
 
 async function getPool(config, dbKey) {
