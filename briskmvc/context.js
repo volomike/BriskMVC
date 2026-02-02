@@ -1,206 +1,235 @@
-// briskmvc/context.js (revised)
+// briskmvc/context.js (repaired)
 
 import path from 'path';
 import fs from 'fs';
 import { loadConfig } from './config.js';
-import { createModels } from './models.js';
+import { models, createModels } from './models.js';
 import { renderViewAuto } from './view.js';
 
 const sessionStore = new Map();
 
 function computeBaseUrl(request) {
-  const h = request.headers;
-  const xfProto = h.get('x-forwarded-proto');
-  const xfHost = h.get('x-forwarded-host');
-  const xfPort = h.get('x-forwarded-port');
+	const h = request.headers;
+	const xfProto = h.get('x-forwarded-proto');
+	const xfHost = h.get('x-forwarded-host');
+	const xfPort = h.get('x-forwarded-port');
 
-  if (xfProto && xfHost) {
-    const port = xfPort && !['80', '443'].includes(xfPort) ? `:${xfPort}` : '';
-    return `${xfProto}://${xfHost}${port}`;
-  }
+	if (xfProto && xfHost) {
+	const port = xfPort && !['80', '443'].includes(xfPort) ? `:${xfPort}` : '';
+	return `${xfProto}://${xfHost}${port}`;
+	}
 
-  const url = new URL(request.url);
-  const isDefault =
-    (url.protocol === 'http:' && url.port === '80') ||
-    (url.protocol === 'https:' && url.port === '443') ||
-    url.port === '';
-  const port = isDefault ? '' : `:${url.port}`;
-  return `${url.protocol}//${url.hostname}${port}`;
+	const url = new URL(request.url);
+	const isDefault =
+	(url.protocol === 'http:' && url.port === '80') ||
+	(url.protocol === 'https:' && url.port === '443') ||
+	url.port === '';
+	const port = isDefault ? '' : `:${url.port}`;
+	return `${url.protocol}//${url.hostname}${port}`;
 }
 
 async function runAutoRequest(w, VIEW, BASEPATH) {
-  try {
-    const autoRequestPath = path.join(BASEPATH, 'controllers', '_autorequest.js');
-    if (!fs.existsSync(autoRequestPath)) return;
-    const mod = await import(autoRequestPath + `?t=${Date.now()}`);
-    if (mod?.default) await mod.default({ w, VIEW });
-  } catch (err) {
-    console.error('AUTOREQUEST ERROR:', err);
-  }
+	try {
+	const autoRequestPath = path.join(BASEPATH, 'controllers', '_autorequest.js');
+	if (!fs.existsSync(autoRequestPath)) return;
+	const mod = await import(autoRequestPath + `?t=${Date.now()}`);
+	if (mod?.default) await mod.default({ w, VIEW });
+	} catch (err) {
+	console.error('AUTOREQUEST ERROR:', err);
+	}
 }
 
 export async function buildContext(request, headers, controllerPath, bodyFromCtx = null, options = {}) {
-  const { BASEPATH } = options;
-  if (!BASEPATH) throw new Error('BASEPATH is required in buildContext options');
+	const { BASEPATH } = options;
+	if (!BASEPATH) throw new Error('BASEPATH is required in buildContext options');
 
-  const v = {};
+	const v = {};
 
-  const BASEURL = computeBaseUrl(request);
-  const url = new URL(request.url);
-  const getParams = Object.fromEntries(url.searchParams.entries());
+	const BASEURL = computeBaseUrl(request);
+	const url = new URL(request.url);
+	const getParams = Object.fromEntries(url.searchParams.entries());
 
-  const cookies = Object.fromEntries(
-    (request.headers.get('cookie') || '')
-      .split(';')
-      .map(c => c.trim().split('='))
-      .filter(([k]) => k)
-      .map(([k, v]) => [k, decodeURIComponent(v || '')])
-  );
+	const cookies = Object.fromEntries(
+	(request.headers.get('cookie') || '')
+		.split(';')
+		.map(c => c.trim().split('='))
+		.filter(([k]) => k)
+		.map(([k, v]) => [k, decodeURIComponent(v || '')])
+	);
 
-  let sid = cookies.sid || crypto.randomUUID();
-  const isNewSession = !sessionStore.has(sid);
-  if (isNewSession) sessionStore.set(sid, {});
-  const session = sessionStore.get(sid);
+	let sid = cookies.sid || crypto.randomUUID();
+	const isNewSession = !sessionStore.has(sid);
+	if (isNewSession) sessionStore.set(sid, {});
+	const session = sessionStore.get(sid);
 
-  headers.append(
-    'Set-Cookie',
-    `sid=${sid}; Path=/; HttpOnly; SameSite=Lax`
-  );
+	headers.append(
+	'Set-Cookie',
+	`sid=${sid}; Path=/; HttpOnly; SameSite=Lax`
+	);
 
-  let post = {};
-  let posttype = null;
-  let rawBody = null;
-  let files = {};
+	let post = {};
+	let posttype = null;
+	let rawBody = null;
+	let files = {};
 
-  const method = request.method.toLowerCase();
+	const method = request.method.toLowerCase();
 
-  if (['post', 'put', 'patch'].includes(method)) {
-    if (bodyFromCtx != null) {
-      post = bodyFromCtx;
-      posttype = 'json';
-    } else {
-      post = {};
-      posttype = 'unknown';
-    }
-  }
+	if (['post', 'put', 'patch'].includes(method)) {
+	if (bodyFromCtx != null) {
+		post = bodyFromCtx;
+		posttype = 'json';
+	} else {
+		post = {};
+		posttype = 'unknown';
+	}
+	}
+	
+	function xtimeid() {
+		const b = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		const EPOCH_MS = 1735689600000;
 
-  v.BASEURL = BASEURL;
-  v.BASEPATH = BASEPATH;
-  v.RANDOMID = (Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)).substring(0, 16);
-  v.SESSIONID = sid;
+		const timeOriginMs = performance.timeOrigin;
+		const uptimeNs		 = Bun.nanoseconds();
+		const nowNsApprox	= timeOriginMs * 1_000_000 + uptimeNs;
+		const epochNs			= EPOCH_MS * 1_000_000;
+		const deltaNs			= Math.floor(nowNsApprox - epochNs);
 
-  const mtemp = createModels({ BASEPATH });
+		let s = "";
+		let n = deltaNs;
+
+		if (n <= 0) {
+			s = "0";
+		} else {
+			while (n > 0) {
+				s = b[Math.floor(n % 62)] + s;
+				n = Math.floor(n / 62);
+			}
+		}
+
+		return s.padStart(10, "0");
+	}
+
+	// 🔧 FIXED: load models and bind the actual models object, not a Promise
+	await createModels({ BASEPATH });
+	const mtemp = models;
+
+	v.BASEURL = BASEURL;
+	v.BASEPATH = BASEPATH;
+	v.RANDOMID = (Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)).substring(0, 16);
+	v.TIMEID = xtimeid();
+	v.SESSIONID = sid;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // The "w" (web) object -- key component of the BriskMVC framework
 ///////////////////////////////////////////////////////////////////////////////////
 
-  const w = {
-    req: request,
-    res: headers,
+	const w = {
+	req: request,
+	res: headers,
 
-    m: mtemp,
-    models: mtemp,
+	m: mtemp,
+	models: mtemp,
 
-    config: loadConfig({ BASEPATH }),
+	config: loadConfig({ BASEPATH }),
 
-    v,
-    view: v,
+	v,
+	view: v,
 
-    get: getParams,
-    post,
-    posttype,
-    rawBody,
-    files,
+	get: getParams,
+	post,
+	posttype,
+	rawBody,
+	files,
 
-    html: str => new Response(str, { headers }),
-    json: obj => new Response(JSON.stringify(obj), { headers }),
+	html: str => new Response(str, { headers }),
+	json: obj => new Response(JSON.stringify(obj), { headers }),
 
-    header: (name, value) => headers.set(name, value),
-    addHeader: (name, value) => headers.append(name, value),
-    getHeader: name => headers.get(name),
+	header: (name, value) => headers.set(name, value),
+	addHeader: (name, value) => headers.append(name, value),
+	getHeader: name => headers.get(name),
 
-    cookie: (name, value, opts = {}) => {
-      const defaults = {
-        path: '/',
-        domain: '.' + new URL(request.url).hostname,
-        httpOnly: true,
-        sameSite: 'Lax',
-        secure: false,
-        maxAge: 60 * 60 * 24 * 365
-      };
-      const final = { ...defaults, ...opts };
-      const cookie =
-        `${name}=${encodeURIComponent(value)}; ` +
-        Object.entries(final)
-          .map(([k, v]) => {
-            if (v === true) return k;
-            if (v === false || v == null) return '';
-            return `${k}=${v}`;
-          })
-          .filter(Boolean)
-          .join('; ');
-      headers.append('Set-Cookie', cookie);
-    },
+	cookie: (name, value, opts = {}) => {
+		const defaults = {
+		path: '/',
+		domain: '.' + new URL(request.url).hostname,
+		httpOnly: true,
+		sameSite: 'Lax',
+		secure: false,
+		maxAge: 60 * 60 * 24 * 365
+		};
+		const final = { ...defaults, ...opts };
+		const cookie =
+		`${name}=${encodeURIComponent(value)}; ` +
+		Object.entries(final)
+			.map(([k, v]) => {
+			if (v === true) return k;
+			if (v === false || v == null) return '';
+			return `${k}=${v}`;
+			})
+			.filter(Boolean)
+			.join('; ');
+		headers.append('Set-Cookie', cookie);
+	},
 
-    sessionCookie: (name, value, opts = {}) => {
-      const defaults = {
-        path: '/',
-        domain: '.' + new URL(request.url).hostname,
-        httpOnly: true,
-        sameSite: 'Lax',
-        secure: false
-      };
-      const final = { ...defaults, ...opts };
-      const cookie =
-        `${name}=${encodeURIComponent(value)}; ` +
-        Object.entries(final)
-          .map(([k, v]) => {
-            if (v === true) return k;
-            if (v === false || v == null) return '';
-            return `${k}=${v}`;
-          })
-          .filter(Boolean)
-          .join('; ');
-      headers.append('Set-Cookie', cookie);
-    },
+	sessionCookie: (name, value, opts = {}) => {
+		const defaults = {
+		path: '/',
+		domain: '.' + new URL(request.url).hostname,
+		httpOnly: true,
+		sameSite: 'Lax',
+		secure: false
+		};
+		const final = { ...defaults, ...opts };
+		const cookie =
+		`${name}=${encodeURIComponent(value)}; ` +
+		Object.entries(final)
+			.map(([k, v]) => {
+			if (v === true) return k;
+			if (v === false || v == null) return '';
+			return `${k}=${v}`;
+			})
+			.filter(Boolean)
+			.join('; ');
+		headers.append('Set-Cookie', cookie);
+	},
 
-    session,
+	session,
 
-    doRedirect: (url, status = 302) =>
-      new Response('', {
-        status,
-        headers: { Location: url }
-      }),
+	doRedirect: (url, status = 302) =>
+		new Response('', {
+		status,
+		headers: { Location: url }
+		}),
 
-    // IMPORTANT: no async keyword — return the Promise directly
-    renderView: (overrideView = null) =>
-      renderViewAuto(controllerPath, { VIEW: v }, overrideView, headers, { BASEPATH })
-  };
+	// IMPORTANT: no async keyword — return the Promise directly
+	renderView: (overrideView = null) =>
+		renderViewAuto(controllerPath, { VIEW: v }, overrideView, headers, { BASEPATH })
+	};
 
 ///////////////////////////////////////////////////////////////////////////////////
 // End of "w" assignment
 ///////////////////////////////////////////////////////////////////////////////////
 
-  globalThis.w = w;
-  globalThis.VIEW = v;
+	globalThis.w = w;
+	globalThis.VIEW = v;
 
-  globalThis.die = function (msg, obj = null) {
-    let dump = '';
-    if (obj !== null) {
-      try {
-        dump = '\n\nDUMP:\n' + JSON.stringify(obj, null, 2);
-      } catch {
-        dump = '\n\nDUMP: [unserializable object]';
-      }
-    }
-    const err = new Error(msg + dump);
-    err.name = 'DUMP';
-    throw err;
-  };
+	globalThis.die = function (msg, obj = null) {
+	let dump = '';
+	if (obj !== null) {
+		try {
+		dump = '\n\nDUMP:\n' + JSON.stringify(obj, null, 2);
+		} catch {
+		dump = '\n\nDUMP: [unserializable object]';
+		}
+	}
+	const err = new Error(msg + dump);
+	err.name = 'DUMP';
+	throw err;
+	};
 
-  // Run on every request
-  await runAutoRequest(w, v, BASEPATH);
+	// Run on every request
+	await runAutoRequest(w, v, BASEPATH);
 
-  return { w, VIEW: v };
+	return { w, VIEW: v };
 }
+

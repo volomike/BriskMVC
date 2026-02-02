@@ -134,5 +134,8 @@ For this alternative router, you may continue the discussion with GrokAI for imp
 
 https://x.com/i/grok/share/284700cfeb4944b998344702526b5a81
 
+17. The controllers/_autorequest.js is a handy tool where, upon each request, you can intercept the w and VIEW object BEFORE the
+controller loads. You can inspect the request URL, for instance, to do actions per a URL or URL pattern, or just make global changes
+across your entire application.
 
 
