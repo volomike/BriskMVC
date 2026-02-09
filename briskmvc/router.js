@@ -60,7 +60,8 @@ export function loadRoutes(app, { BASEPATH }) {
           headers,
           full,
           bodyFromCtx,
-          { BASEPATH }           // ← critical for symlink safety
+          { BASEPATH },           // ← critical for symlink safety
+          ctx.cookie
         );
 
         w.requestUrl = ctx.request.url;
@@ -90,4 +91,5 @@ export function loadRoutes(app, { BASEPATH }) {
     }
   }
 }
+
 
