@@ -3,93 +3,100 @@ import path from 'path';
 import { buildContext } from './context.js';
 
 function fileToRoute(filePath, controllersDir) {
-  const rel = path.relative(controllersDir, filePath).replace(/\\/g, '/');
-  let noExt = rel.replace(/\.js$/, '');
-  noExt = noExt.replace(/\.(get|post|put|delete)$/i, '');
-  let route = '/' + noExt;
-  route = route.replace(/\/index$/, '');
-  return route === '' ? '/' : route;
+	const rel = path.relative(controllersDir, filePath).replace(/\\/g, '/');
+	let noExt = rel.replace(/\.js$/, '');
+	noExt = noExt.replace(/\.(get|post|put|delete)$/i, '');
+	let route = '/' + noExt;
+	route = route.replace(/\/index$/, '');
+	return route === '' ? '/' : route;
 }
 
 function methodFromFilename(name) {
-  const parts = name.split('.');
-  if (parts.length > 2) {
-    const m = parts[parts.length - 2].toLowerCase();
-    if (['get', 'post', 'put', 'delete'].includes(m)) return m.toUpperCase();
-  }
-  return 'GET';
+	const parts = name.split('.');
+	if (parts.length > 2) {
+	const m = parts[parts.length - 2].toLowerCase();
+	if (['get', 'post', 'put', 'delete'].includes(m)) return m.toUpperCase();
+	}
+	return 'GET';
 }
 
 export function loadRoutes(app, { BASEPATH }) {
-  const CONTROLLERS_DIR = path.join(BASEPATH, 'controllers');
-  const stack = [CONTROLLERS_DIR];
+	const CONTROLLERS_DIR = path.join(BASEPATH, 'controllers');
+	const stack = [CONTROLLERS_DIR];
 
-  while (stack.length) {
-    const dir = stack.pop();
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+	while (stack.length) {
+	const dir = stack.pop();
+	const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-    for (const entry of entries) {
-      const full = path.join(dir, entry.name);
+	for (const entry of entries) {
+		const full = path.join(dir, entry.name);
 
-      if (entry.isDirectory()) {
-        stack.push(full);
-        continue;
-      }
+		if (entry.isDirectory()) {
+		stack.push(full);
+		continue;
+		}
 
-      if (!entry.name.endsWith('.js')) continue;
+		if (!entry.name.endsWith('.js')) continue;
 
-      const method = methodFromFilename(entry.name);
-      const routePath = fileToRoute(full, CONTROLLERS_DIR);
+		const method = methodFromFilename(entry.name);
+		const routePath = fileToRoute(full, CONTROLLERS_DIR);
 
-      const register = {
-        GET: app.get.bind(app),
-        POST: app.post?.bind(app) || app.route.bind(app),
-        PUT: app.put?.bind(app) || app.route.bind(app),
-        DELETE: app.delete?.bind(app) || app.route.bind(app)
-      }[method];
+		const register = {
+		GET: app.get.bind(app),
+		POST: app.post?.bind(app) || app.route.bind(app),
+		PUT: app.put?.bind(app) || app.route.bind(app),
+		DELETE: app.delete?.bind(app) || app.route.bind(app)
+		}[method];
 
-      register(routePath, async ctx => {
-        const mod = await import(full + `?t=${Date.now()}`);
-        const handler = mod.default;
+		register(routePath, async ctx => {
+		const mod = await import(full + `?t=${Date.now()}`);
+		const handler = mod.default;
 
-        const headers = new Headers();
-        const bodyFromCtx = ctx.body ?? null;
+		const headers = new Headers();
+		const bodyFromCtx = ctx.body ?? null;
 
-        const { w, VIEW } = await buildContext(
-          ctx.request,
-          headers,
-          full,
-          bodyFromCtx,
-          { BASEPATH },           // ← critical for symlink safety
-          ctx.cookie
-        );
+		const { w, VIEW } = await buildContext(
+			ctx.request,
+			headers,
+			full,
+			bodyFromCtx,
+			{ BASEPATH },			 // ← critical for symlink safety
+			ctx.cookie
+		);
 
-        w.requestUrl = ctx.request.url;
+		w.requestUrl = ctx.request.url;
 
-        try {
-          const result = await handler({ ...ctx, w, VIEW });
+		try {
+			const result = await handler({ ...ctx, w, VIEW });
 
-          // ── Added: Handle case where controller returns a Promise (e.g. w.renderView()) ──
-          let finalBody = result;
-          if (result instanceof Promise) {
-            finalBody = await result;
-          }
-          // ────────────────────────────────────────────────────────────────────────────────
+/*
+			// ── Added: Handle case where controller returns a Promise (e.g. w.renderView()) ──
+			let finalBody = result;
+			if (result instanceof Promise) {
+			finalBody = await result;
+			}
+			// ────────────────────────────────────────────────────────────────────────────────
 
-          if (finalBody instanceof Response) {
-            return finalBody;
-          }
+			if (finalBody instanceof Response) {
+			return finalBody;
+			}
 
-          // Fallback: assume it's content (string, object, etc.)
-          return new Response(finalBody, { headers });
+			// Fallback: assume it's content (string, object, etc.)
+			return new Response(finalBody, { headers });
+*/
+			// Merge custom headers into Elysia's set.headers
+			for (const [key, value] of headers.entries()) {
+				ctx.set.headers[key.toLowerCase()] = value;
+			}
 
-        } catch (err) {
-          err.requestUrl = w.requestUrl;
-          throw err;
-        }
-      });
-    }
-  }
+			return result;	// Return plain body; Elysia will create Response and add cookies
+
+		} catch (err) {
+			err.requestUrl = w.requestUrl;
+			throw err;
+		}
+		});
+	}
+	}
 }
-
 

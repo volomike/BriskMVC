@@ -1,3 +1,5 @@
+// briskmvc/context.js (revised with Elysia native reactive cookies + wrapper)
+
 import path from 'path';
 import fs from 'fs';
 import { loadConfig } from './config.js';
@@ -65,7 +67,7 @@ export async function buildContext(request, headers, controllerPath, bodyFromCtx
 
 	const v = {};
 
-	const BASEURL = computeBaseUrl(request);
+	const BASEURL = computeBaseUrl(request).split('http://').join('https://');
 	const url = new URL(request.url);
 	const getParams = Object.fromEntries(url.searchParams.entries());
 
@@ -143,6 +145,9 @@ export async function buildContext(request, headers, controllerPath, bodyFromCtx
 		
 		const sDerivedDomain = '.' + getRootDomain(BASEURL);
 		const isHTTPS = BASEURL.startsWith('https://');
+		
+//console.log('sDerivedDomain',sDerivedDomain);
+//console.log('isHTTPS',isHTTPS);
 
 		// Setter: w.cookie('key', val, { ... })
 		cookie.set({
@@ -168,6 +173,9 @@ export async function buildContext(request, headers, controllerPath, bodyFromCtx
 
 		m: mtemp,
 		models: mtemp,
+		
+		basepath: BASEPATH,
+		baseurl: BASEURL,
 
 		config: loadConfig({ BASEPATH }),
 
@@ -184,7 +192,8 @@ export async function buildContext(request, headers, controllerPath, bodyFromCtx
 
 		json: obj => {
 			headers.set('Content-Type', 'application/json');
-			return new Response(JSON.stringify(obj), { headers });
+			return obj;
+			//return new Response(JSON.stringify(obj), { headers });
 			//return new Response(obj, { headers });
 		},
 
@@ -231,5 +240,4 @@ export async function buildContext(request, headers, controllerPath, bodyFromCtx
 
 	return { w, VIEW: v };
 }
-
 
