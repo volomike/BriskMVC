@@ -10,7 +10,7 @@ export async function createModels(opts, changedFile = null) {
     const modelsDir = join(base, 'models');
 
     if (changedFile) {
-        const name = changedFile.replace('.js', '');
+        const name = changedFile.replace('.js', '').replace(/-/g, '_');
         const fullPath = join(modelsDir, changedFile);
         const module = await import(`${fullPath}?t=${Date.now()}`);
         models[name] = module.default || module;
@@ -22,7 +22,7 @@ export async function createModels(opts, changedFile = null) {
     for (const file of files) {
         if (!file.endsWith('.js')) continue;
 
-        const name = file.replace('.js', '');
+        const name = file.replace('.js', '').replace(/-/g, '_');
         const fullPath = join(modelsDir, file);
 
         const module = await import(fullPath);
@@ -31,4 +31,3 @@ export async function createModels(opts, changedFile = null) {
 }
 
 export default createModels;
-
